@@ -7,6 +7,11 @@
 
 using namespace neto::base;
 
+static struct timespec interval_long = {0, 300000000}; // 0.3s
+static struct timespec interval_short = {0, 100000000}; // 0.1s
+#define SLEEP_LONG() nanosleep(&interval_long, NULL)
+#define SLEEP_SHORT() nanosleep(&interval_short, NULL)
+
 TEST(Thread, create) {
   std::string str("Out Side Thread");
   ThreadPtr ptr = Thread::create([&str]() {
@@ -24,7 +29,7 @@ TEST(Thread, inThread) {
 
 TEST(Thread, alive) {
   ThreadPtr ptr = Thread::create([]() {
-      sleep(1);
+      SLEEP_SHORT();
       });
   ASSERT_TRUE(ptr->alive());
   ptr->join();
@@ -33,7 +38,7 @@ TEST(Thread, alive) {
 
 TEST(Thread, detach) {
   ThreadPtr ptr = Thread::create([]() {
-        ::sleep(1);
+      SLEEP_SHORT();
       });
   ASSERT_FALSE(ptr->detached());
   ptr->detach();
@@ -51,7 +56,7 @@ TEST(Thread, join) {
 
 TEST(Thread, cancel) {
   ThreadPtr ptr = Thread::create([]() {
-      ::sleep(2);
+      SLEEP_LONG();
       });
   ASSERT_TRUE(ptr->alive());
   ptr->cancel();

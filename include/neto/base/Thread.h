@@ -41,6 +41,8 @@ namespace base {
 
       Thread(tid id, const Runnable &functor);
       Thread();
+      Thread(const Thread &);
+      Thread(const Thread &&);
 
       pthread_t id_;
       Runnable main_;
