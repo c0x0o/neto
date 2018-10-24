@@ -2,6 +2,9 @@
 
 using namespace neto::base;
 
+// init ThreadInfo
+Thread::ThreadInfo Thread::info_;
+
 ThreadPtr Thread::create(const Runnable &functor) {
   pthread_attr_t attr;
   int ret = 0;
@@ -21,18 +24,32 @@ ThreadPtr Thread::create(const Runnable &functor) {
 }
 
 bool Thread::inThread(ThreadPtr &thread) {
-  return ThreadInfo::current().thread() == thread;
+  return Thread::current().thread() == thread;
 }
 
+// only for main thread
+Thread::Thread()
+  : id_(pthread_self()),
+    main_(),
+    isMainThread_(true)
+{
+}
+// only available through Thread::create
 Thread::Thread(tid id, const Runnable &functor)
   : id_(id),
-    main_(functor)
+    main_(functor),
+    isMainThread_(false)
 {
 }
 Thread::~Thread() {
   void *ret;
-  cancel();
-  join(&ret);
+
+  // TODO
+  // 1. need more graceful way to stop the thread, such as signal
+  if (!isMainThread_) {
+    cancel();
+    join(&ret);
+  }
 }
 
 
@@ -53,6 +70,10 @@ bool Thread::detached() const {
   return true;
 }
 
+bool Thread::isMainThread() const {
+  return isMainThread_;
+}
+
 int Thread::detach() {
   if (detached()) {
     return 0;
@@ -71,29 +92,29 @@ int Thread::cancel() {
 
 void *Thread::main(void *arg) {
   ThreadPtr *ptr = static_cast<ThreadPtr *>(arg);
-  ThreadInfo::current().setReferer(ptr);
+  Thread::current().setReferer(ptr);
 
   (*ptr)->main_();
 
   return NULL;
 }
 
-ThreadInfo &ThreadInfo::current() {
-  static ThreadInfo info;
-
-  return info;
+Thread::ThreadInfo &Thread::current() {
+  return info_;
 }
 
-ThreadInfo::ThreadInfo() {
+Thread::ThreadInfo::ThreadInfo() {
   pthread_key_create(&referers_, [](void *ptr){
       delete (ThreadPtr *)ptr;
       });
+
+  setReferer(new ThreadPtr(new Thread));
 }
-ThreadInfo::~ThreadInfo() {
+Thread::ThreadInfo::~ThreadInfo() {
   pthread_key_delete(referers_);
 }
 
-ThreadPtr ThreadInfo::thread() {
+ThreadPtr Thread::ThreadInfo::thread() {
   ThreadPtr *ptr;
 
   ptr = static_cast<ThreadPtr *>(pthread_getspecific(referers_));
@@ -101,6 +122,6 @@ ThreadPtr ThreadInfo::thread() {
   return ThreadPtr(*ptr);
 }
 
-int ThreadInfo::setReferer(void *refer) {
+int Thread::ThreadInfo::setReferer(void *refer) {
   return pthread_setspecific(referers_, refer);
 }

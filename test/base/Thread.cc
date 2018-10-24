@@ -27,6 +27,14 @@ TEST(Thread, inThread) {
   ptr->join();
 }
 
+TEST(Thread, isMainThread) {
+  ThreadPtr ptr = Thread::create([&ptr]() {
+      EXPECT_FALSE(ptr->isMainThread());
+      });
+  EXPECT_TRUE(Thread::current().thread()->isMainThread());
+  ptr->join();
+}
+
 TEST(Thread, alive) {
   ThreadPtr ptr = Thread::create([]() {
       SLEEP_SHORT();

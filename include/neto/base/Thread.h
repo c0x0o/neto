@@ -19,8 +19,21 @@ namespace base {
 
   class Thread {
     public:
+      class ThreadInfo {
+        public:
+          ThreadInfo();
+          ~ThreadInfo();
+
+          ThreadPtr thread();
+          int setReferer(void *);
+
+        private:
+          pthread_key_t referers_;
+      };
+
       static ThreadPtr create(const Runnable &functor);
       static bool inThread(ThreadPtr &thread);
+      static ThreadInfo &current();
 
       virtual ~Thread();
 
@@ -31,6 +44,7 @@ namespace base {
         return 0 == pthread_kill(id_, 0);
       }
       bool detached() const;
+      bool isMainThread() const;
 
       int detach();
       int join(void **retval = NULL);
@@ -38,27 +52,17 @@ namespace base {
 
     private:
       static void *main(void *);
+      static ThreadInfo info_;
 
       Thread(tid id, const Runnable &functor);
+      // only for main thread
       Thread();
       Thread(const Thread &);
       Thread(const Thread &&);
 
       pthread_t id_;
       Runnable main_;
-  };
-
-  class ThreadInfo {
-    public:
-      static ThreadInfo &current();
-
-      ThreadPtr thread();
-      int setReferer(void *);
-    private:
-      ThreadInfo();
-      ~ThreadInfo();
-
-      pthread_key_t referers_;
+      bool isMainThread_;
   };
 
 } // namespace neto
