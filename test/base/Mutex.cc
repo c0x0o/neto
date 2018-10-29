@@ -15,7 +15,7 @@ static struct timespec interval_short = {0, 100000000}; // 0.1s
 TEST(Mutex, BasicOperation) {
   int counter = 0;
   Mutex lock;
-  ThreadPtr thread = Thread::create([&counter, &lock]() {
+  Thread thread([&counter, &lock]() {
         lock.lock();
         SLEEP_LONG();
         counter = 2;
@@ -26,18 +26,18 @@ TEST(Mutex, BasicOperation) {
     counter = 1;
     EXPECT_EQ(1,2);
   }
-  thread->join();
+  thread.join();
   EXPECT_EQ(counter, 2);
 }
 
 TEST(Mutex, Robust) {
   Mutex lock;
   int ret;
-  ThreadPtr thread = Thread::create([&lock]() {
+  Thread thread([&lock]() {
         lock.lock();
       });
 
-  thread->join();
+  thread.join();
 
   // lock failed because of EOWNERDEAD
   ret = lock.lock();
@@ -57,12 +57,12 @@ TEST(Mutex, Robust) {
 
 TEST(MutexGuard, constructor) {
   Mutex lock;
-  ThreadPtr ptr = Thread::create([&lock]() {
+  Thread thread([&lock]() {
       MutexGuard guard(lock);
       SLEEP_LONG();
       });
   SLEEP_SHORT();
   ASSERT_EQ(lock.locked(), true);
-  ptr->join();
+  thread.join();
   ASSERT_EQ(lock.locked(), false);
 }

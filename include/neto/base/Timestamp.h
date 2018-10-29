@@ -9,18 +9,18 @@
 
 namespace neto {
 namespace base {
+  class Timestamp;
 
-  const char *MonthString[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",
-    "Aug", "Sep", "Oct", "Nov", "Dec"};
-  const char *WeekString[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-  const char GMTfmt[] = "%.3s, %.02d %.3s %.04d %.02d:%.02d:%.02d %s";
+  extern const char *MonthString[];
+  extern const char *WeekString[];
+  extern const char GMTfmt[];
 
   class Timestamp {
     public:
       static Timestamp now();
 
-      Timestamp(unsigned long timeSinceEpoch = 0);
-      Timestamp(struct timespec *spec);
+      explicit Timestamp(unsigned long timeSinceEpoch = 0);
+      explicit Timestamp(struct timespec &spec);
       ~Timestamp() {};
 
       std::string toNumericString(unsigned int reserve = 4) const;
@@ -35,18 +35,30 @@ namespace base {
       int getMinute() const;
       int getSecond() const;
 
+      const struct timespec &getTimespec() const;
+      const struct tm &gettm() const;
+
       bool operator>(const Timestamp &) const;
       bool operator>=(const Timestamp &) const;
       bool operator<(const Timestamp &) const;
       bool operator<=(const Timestamp &) const;
       bool operator==(const Timestamp &) const;
+      bool operator!=(const Timestamp &) const;
 
       Timestamp &operator=(const Timestamp &);
+      Timestamp &operator+=(float);
+      Timestamp &operator-=(float);
+      Timestamp operator+(float) const;
+      Timestamp operator-(float) const;
 
     private:
+      void settm();
+
       struct timespec spec_;
       struct tm tm_;
   };
+
+  const Timestamp tsEpoch;
 
 } // namespace base
 } // namespace neto

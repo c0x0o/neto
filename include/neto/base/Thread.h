@@ -7,34 +7,25 @@
 #include <pthread.h>
 #include <string.h>
 #include <signal.h>
+#include <sched.h>
 
 namespace neto {
 namespace base {
   class Thread;
-  class ThreadInfo;
+  class CurrentThread;
+  class MainThread;
 
   typedef std::shared_ptr<Thread> ThreadPtr;
+  typedef std::weak_ptr<Thread> ThreadWeakPtr;
   typedef std::function<void()> Runnable;
   typedef pthread_t tid;
 
   class Thread {
     public:
-      class ThreadInfo {
-        public:
-          ThreadInfo();
-          ~ThreadInfo();
-
-          ThreadPtr thread();
-          int setReferer(void *);
-
-        private:
-          pthread_key_t referers_;
-      };
-
       static ThreadPtr create(const Runnable &functor);
-      static bool inThread(ThreadPtr &thread);
-      static ThreadInfo &current();
 
+      Thread();
+      Thread(const Runnable &functor);
       virtual ~Thread();
 
       tid id() const {
@@ -48,21 +39,46 @@ namespace base {
 
       int detach();
       int join(void **retval = NULL);
+      int kill(int sig = 0);
       int cancel();
 
     private:
       static void *main(void *);
-      static ThreadInfo info_;
 
-      Thread(tid id, const Runnable &functor);
-      // only for main thread
-      Thread();
-      Thread(const Thread &);
-      Thread(const Thread &&);
+      Thread(const Thread &) = delete;
+      Thread(const Thread &&) = delete;
 
       pthread_t id_;
       Runnable main_;
-      bool isMainThread_;
+  };
+
+  class MainThread {
+    public:
+      static tid id() {return main_->id();}
+      static ThreadPtr thread() {return main_;}
+    private:
+      static ThreadPtr main_;
+  };
+
+  class CurrentThread {
+    public:
+      static tid id() {return pthread_self();}
+      static bool isCurrentThread(const Thread &t) {return id() == t.id();}
+      static bool isMainThread() {return id() == MainThread::id();}
+      static void enableCancel() {
+        int old;
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &old);
+      }
+      static void disableCancel() {
+        int old;
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &old);
+      }
+      static void yield() {
+        sched_yield();
+      }
+    private:
+      static tid mainId_;
+      static Thread mainThread;
   };
 
 } // namespace neto

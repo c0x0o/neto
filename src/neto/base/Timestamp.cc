@@ -1,7 +1,20 @@
 #include <neto/base/Timestamp.h>
 
+#define FLOAT_INT(x) static_cast<time_t>(x)
+#define FLOAT_NANO(x) static_cast<long>(((x)-FLOAT_INT(x))*1000000000)
+
 using namespace neto::base;
 using std::string;
+using neto::base::MonthString;
+using neto::base::WeekString;
+using neto::base::GMTfmt;
+
+const char *neto::base::MonthString[] = {"Jan", "Feb", "Mar", "Apr", "May",
+  "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+const char *neto::base::WeekString[] = {"Sun", "Mon", "Tue", "Wed", "Thu",
+  "Fri", "Sat"};
+const char neto::base::GMTfmt[]
+  = "%.3s, %.02d %.3s %.04d %.02d:%.02d:%.02d %s";
 
 Timestamp Timestamp::now() {
   struct timespec spec;
@@ -9,18 +22,21 @@ Timestamp Timestamp::now() {
   memset(&spec, 0, sizeof spec);
   clock_gettime(CLOCK_REALTIME, &spec);
 
-  return Timestamp(&spec);
+  return Timestamp(spec);
 }
 
 Timestamp::Timestamp(unsigned long timeSinceEpoch) {
   spec_.tv_sec = timeSinceEpoch;
   spec_.tv_nsec = 0;
-  tzset();
-  localtime_r(&spec_.tv_sec, &tm_);
+  settm();
 }
-Timestamp::Timestamp(struct timespec *spec) {
-  spec_.tv_sec = spec->tv_sec;
-  spec_.tv_nsec = spec->tv_nsec;
+Timestamp::Timestamp(struct timespec &spec) {
+  spec_.tv_sec = spec.tv_sec;
+  spec_.tv_nsec = spec.tv_nsec;
+  settm();
+}
+
+void Timestamp::settm() {
   tzset();
   localtime_r(&spec_.tv_sec, &tm_);
 }
@@ -91,10 +107,24 @@ int Timestamp::getSecond() const {
   return tm_.tm_sec;
 }
 
+const struct timespec &Timestamp::getTimespec() const {
+  return spec_;
+}
+const struct tm &Timestamp::gettm() const {
+  return tm_;
+}
 
 bool Timestamp::operator==(const Timestamp &ts) const {
   if (spec_.tv_sec == ts.spec_.tv_sec
       && spec_.tv_nsec == ts.spec_.tv_nsec) {
+    return true;
+  }
+
+  return false;
+}
+bool Timestamp::operator!=(const Timestamp &ts) const {
+  if (spec_.tv_sec != ts.spec_.tv_sec
+      || spec_.tv_nsec != ts.spec_.tv_nsec) {
     return true;
   }
 
@@ -141,4 +171,32 @@ Timestamp &Timestamp::operator=(const Timestamp &ts) {
   ::memcpy(&tm_, &ts.tm_, sizeof tm_);
 
   return *this;
+}
+Timestamp &Timestamp::operator+=(float sec) {
+  spec_.tv_sec += FLOAT_INT(sec);
+  spec_.tv_nsec += FLOAT_NANO(sec);
+  settm();
+
+  return *this;
+}
+Timestamp &Timestamp::operator-=(float sec) {
+  spec_.tv_sec -= FLOAT_INT(sec);
+  spec_.tv_nsec -= FLOAT_NANO(sec);
+  settm();
+
+  return *this;
+}
+Timestamp Timestamp::operator+(float sec) const {
+  struct timespec result;
+  result.tv_sec = spec_.tv_sec + FLOAT_INT(sec);
+  result.tv_nsec = spec_.tv_nsec + FLOAT_NANO(sec);
+
+  return Timestamp(result);
+}
+Timestamp Timestamp::operator-(float sec) const {
+  struct timespec result;
+  result.tv_sec = spec_.tv_sec - FLOAT_INT(sec);
+  result.tv_nsec = spec_.tv_nsec - FLOAT_NANO(sec);
+
+  return Timestamp(result);
 }

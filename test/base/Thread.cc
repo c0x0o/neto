@@ -7,10 +7,16 @@
 
 using namespace neto::base;
 
-static struct timespec interval_long = {0, 300000000}; // 0.3s
+// static struct timespec interval_long = {0, 300000000}; // 0.3s
 static struct timespec interval_short = {0, 100000000}; // 0.1s
-#define SLEEP_LONG() nanosleep(&interval_long, NULL)
+// #define SLEEP_LONG() nanosleep(&interval_long, NULL)
 #define SLEEP_SHORT() nanosleep(&interval_short, NULL)
+
+TEST(Thread, defaultConstructor) {
+  Thread thread;
+
+  EXPECT_TRUE(thread.isMainThread());
+}
 
 TEST(Thread, create) {
   std::string str("Out Side Thread");
@@ -21,53 +27,56 @@ TEST(Thread, create) {
 }
 
 TEST(Thread, inThread) {
-  ThreadPtr ptr = Thread::create([&ptr]() {
-      ASSERT_TRUE(Thread::inThread(ptr));
+  Thread thread([&thread]() {
+      ASSERT_TRUE(CurrentThread::isCurrentThread(thread));
       });
-  ptr->join();
+  thread.join();
 }
 
 TEST(Thread, isMainThread) {
-  ThreadPtr ptr = Thread::create([&ptr]() {
-      EXPECT_FALSE(ptr->isMainThread());
+  Thread thread([&thread]() {
+      EXPECT_FALSE(thread.isMainThread());
       });
-  EXPECT_TRUE(Thread::current().thread()->isMainThread());
-  ptr->join();
+  EXPECT_TRUE(CurrentThread::isMainThread());
+  thread.join();
 }
 
 TEST(Thread, alive) {
-  ThreadPtr ptr = Thread::create([]() {
+  Thread thread([]() {
       SLEEP_SHORT();
       });
-  ASSERT_TRUE(ptr->alive());
-  ptr->join();
-  ASSERT_FALSE(ptr->alive());
+  ASSERT_TRUE(thread.alive());
+  thread.join();
+  ASSERT_FALSE(thread.alive());
 }
 
 TEST(Thread, detach) {
-  ThreadPtr ptr = Thread::create([]() {
+  Thread thread([]() {
       SLEEP_SHORT();
       });
-  ASSERT_FALSE(ptr->detached());
-  ptr->detach();
-  ASSERT_TRUE(ptr->detached());
+  ASSERT_FALSE(thread.detached());
+  thread.detach();
+  ASSERT_TRUE(thread.detached());
 }
 
 TEST(Thread, join) {
   std::string str;
-  ThreadPtr ptr = Thread::create([&str]() {
+  Thread thread([&str]() {
       str = "Hi";
       });
-  ptr->join();
+  thread.join();
   ASSERT_EQ(str, "Hi");
 }
 
 TEST(Thread, cancel) {
-  ThreadPtr ptr = Thread::create([]() {
-      SLEEP_LONG();
+  Thread thread([]() {
+      CurrentThread::enableCancel();
+      // set up a cancel point
+      pause();
       });
-  ASSERT_TRUE(ptr->alive());
-  ptr->cancel();
-  ptr->join();
-  ASSERT_FALSE(ptr->alive());
+  SLEEP_SHORT();
+  EXPECT_TRUE(thread.alive());
+  EXPECT_EQ(thread.cancel(), 0);
+  thread.join();
+  EXPECT_FALSE(thread.alive());
 }
