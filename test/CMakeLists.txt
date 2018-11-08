@@ -10,8 +10,9 @@ include_directories(${neto_SOURCE_DIR}/test/googletest/googletest/include)
 link_directories(${CMAKE_BINARY_DIR}/lib)
 
 file(GLOB BASE_TEST_SRC base/*.cc)
+file(GLOB MM_TEST_SRC mm/*.cc)
 
-set(ALL_TEST_SRC ./main.cc ${BASE_TEST_SRC})
+set(ALL_TEST_SRC ./main.cc ${BASE_TEST_SRC} ${MM_TEST_SRC})
 
 add_executable(neto-test ${ALL_TEST_SRC})
 target_link_libraries(neto-test neto gtest)

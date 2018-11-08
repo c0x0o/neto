@@ -5,7 +5,7 @@
 
 using namespace neto::base;
 
-struct timespec st = {0, 150000000}; // 0.15s
+struct timespec st = {0, 200000000}; // 0.2s
 #define SLEEP_SHORT() nanosleep(&st, NULL)
 
 TEST(EventLoop, nextTick) {
