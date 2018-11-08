@@ -17,6 +17,7 @@
 #include <neto/base/Timestamp.h>
 #include <neto/base/Timer.h>
 #include <neto/base/PtrCompare.h>
+#include <neto/base/EventChannel.h>
 
 namespace neto {
 namespace base {
@@ -31,6 +32,7 @@ namespace base {
   // Phase 4: execute setImmediate functor
   class EventLoop {
     public:
+      const int MaxEpollEvents = 64;
       typedef enum {RUNNING, PAUSE, QUIT} Status;
 
       // call without any args will create a new thread
@@ -46,8 +48,12 @@ namespace base {
       int nextTick(const Runnable &functor);
       TimerWeakPtr setTimeout(float timeout, const TimerCallback &functor);
       TimerWeakPtr setInterval(float interval, const TimerCallback &functor);
+      // EventChannel will be added in next tick
+      int attachEventChannel(const EventChannelPtr &ptr);
+      // EventChannel will be removed in next tick
+      int dettachEventChannel(int fd);
 
-      ThreadWeakPtr hostThread() {return ThreadWeakPtr(host_);}
+      ThreadWeakPtr hostThread() const {return ThreadWeakPtr(host_);}
       bool hostAlive() const {return host_->alive();}
 
       void loop();
@@ -72,9 +78,9 @@ namespace base {
       std::queue<Runnable> functors_;
       Spinlock immediateLock_;
       std::queue<Runnable> immediates_;
-      // TODO
-      // 1. poller
-      // 2. channel
+
+      int epfd_;
+      std::map<int, EventChannelPtr> channels_;
   };
 
 } // namespace base
